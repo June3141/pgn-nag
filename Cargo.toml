@@ -2,12 +2,10 @@
 name = "pgn-nag"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.93"
 description = "PGN を UCI エンジンで一括解析し、注釈付き PGN として読み返すツール"
 # ライセンス未定のうちは publish させない (crates.io へ誤って公開しないための歯止め)
 publish = false
 
-# crate 名 pgn-nag に対してコマンド名は nag にする (ADR は docs/adr/ を参照)
 [[bin]]
 name = "nag"
 path = "src/main.rs"

@@ -1,3 +1,6 @@
+# toolchain 版数の唯一の定義。
+# rustup は cargo 実行時にこのファイルを優先するため、CI 側で版数を指定しても
+# 実際のビルドはここが決める。CI にも書くと片方だけ古いまま気付けなくなる。
 [toolchain]
 channel = "1.93.0"
 components = ["rustfmt", "clippy"]

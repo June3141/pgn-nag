@@ -1,0 +1,7 @@
+version: 2
+updates:
+  # action を SHA で pin しているため、更新はここからしか降りてこない。
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
