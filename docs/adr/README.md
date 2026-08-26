@@ -52,3 +52,4 @@ MADR に沿った構成で、`Considered Options` には却下した案も必ず
 | 0006 | [導出値を保存しない](0006-do-not-store-derived-values.md) | accepted |
 | 0007 | [CI は engine 非依存テストを主軸にする](0007-keep-ci-independent-of-the-engine.md) | accepted |
 | 0008 | [評価値の出所を記録する](0008-record-the-source-of-evaluations.md) | accepted |
+| 0009 | [キーバインドを端末ツールの慣行に揃える](0009-follow-terminal-key-binding-conventions.md) | accepted |
