@@ -5,3 +5,9 @@ updates:
     directory: /
     schedule:
       interval: monthly
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: monthly
+# ci.yml の markdownlint-cli は run: 内で版数を固定しているため dependabot の
+# 監視外になる。更新は手動で行う。
