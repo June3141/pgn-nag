@@ -8,6 +8,7 @@ use pgn_nag::{Viewer, parse};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::style::Modifier;
 
 const SAMPLE: &str = include_str!("data/sample.annotated.pgn");
 
@@ -35,19 +36,29 @@ fn draw(viewer: &Viewer) -> Vec<String> {
         .collect()
 }
 
-/// 枠で区切られた n 番目の領域を行ごとに取り出す。
-fn pane(screen: &[String], index: usize) -> Vec<String> {
+/// 指定した列の範囲を行ごとに取り出す。枠と余白は落とす。
+///
+/// 隣り合う枠線で空の区切りができるため、`│` での分割では領域を取り出せない。
+fn pane(screen: &[String], cols: std::ops::Range<usize>) -> Vec<String> {
+    let width = cols.len();
     screen
         .iter()
         .map(|line| {
-            line.split('│')
-                .nth(index + 1)
-                .unwrap_or("")
+            line.chars()
+                .skip(cols.start)
+                .take(width)
+                .collect::<String>()
+                .trim_matches('│')
                 .trim_end()
                 .to_owned()
         })
         .collect()
 }
+
+/// 盤面の領域。
+const BOARD: std::ops::Range<usize> = 0..24;
+/// 手順リストの領域。
+const MOVES: std::ops::Range<usize> = 24..64;
 
 fn press(viewer: &mut Viewer, code: KeyCode) -> Action {
     apply_key(viewer, KeyEvent::new(code, KeyModifiers::NONE))
@@ -57,7 +68,7 @@ fn press(viewer: &mut Viewer, code: KeyCode) -> Action {
 fn draws_the_board_from_whites_side() {
     // 段の番号と駒の並びを行ごと突き合わせる。
     // 部分一致で見ると盤を上下逆にしても通ってしまう
-    let screen = pane(&draw(&viewer()), 0);
+    let screen = pane(&draw(&viewer()), BOARD);
     let board: Vec<&str> = screen[1..10].iter().map(String::as_str).collect();
     assert_eq!(
         board,
@@ -79,7 +90,7 @@ fn draws_the_board_from_whites_side() {
 fn advancing_moves_a_single_pawn() {
     let mut v = viewer();
     v.next(); // 1. d4
-    let screen = pane(&draw(&v), 0);
+    let screen = pane(&draw(&v), BOARD);
     assert_eq!(screen[5], "4  . . . P . . . .");
     assert_eq!(screen[7], "2  P P P . P P P P");
 }
@@ -200,7 +211,7 @@ fn modifier_keys_do_not_move() {
 
 #[test]
 fn lists_moves_with_evals() {
-    let screen = pane(&draw(&viewer()), 1);
+    let screen = pane(&draw(&viewer()), MOVES);
     // 1. d4 { [%eval 0.32,18] }  1... c6 { [%eval 0.32,18] }
     assert!(
         screen
@@ -220,28 +231,57 @@ fn shows_mate_as_mate() {
     // 終盤は [%eval #-1,18]。centipawn に潰して表示しない
     let mut v = viewer();
     v.last();
-    let screen = pane(&draw(&v), 1);
+    let screen = pane(&draw(&v), MOVES);
     assert!(
         screen.iter().any(|l| l.contains("#-1")),
         "詰みを詰みとして出すこと: {screen:?}"
     );
 }
 
+/// 手順リストで反転している行を返す。
+///
+/// 強調は文字ではなく属性なので、テキストの比較では検出できない。
+fn highlighted(viewer: &Viewer) -> Vec<String> {
+    let mut terminal = Terminal::new(TestBackend::new(64, 14)).unwrap();
+    terminal.draw(|frame| viewer.render(frame)).unwrap();
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area.width as usize;
+    buffer
+        .content()
+        .chunks(width)
+        .filter_map(|row| {
+            let marked: String = row[MOVES.start..MOVES.end]
+                .iter()
+                .filter(|cell| cell.modifier.contains(Modifier::REVERSED))
+                .map(|cell| cell.symbol())
+                .collect();
+            (!marked.trim().is_empty()).then(|| marked.trim().to_owned())
+        })
+        .collect()
+}
+
 #[test]
 fn marks_the_current_ply() {
     let mut v = viewer();
     v.next();
-    let one = pane(&draw(&v), 1);
+    assert_eq!(highlighted(&v).len(), 1, "反転する行は 1 つだけ");
+    assert!(highlighted(&v)[0].contains("d4"), "{:?}", highlighted(&v));
+
     v.next();
-    let two = pane(&draw(&v), 1);
-    assert_ne!(one, two, "現在の手が変われば手順リストの見た目も変わること");
+    assert!(highlighted(&v)[0].contains("c6"), "{:?}", highlighted(&v));
+}
+
+#[test]
+fn marks_nothing_at_the_starting_position() {
+    // 開始局面ではまだ指した手が無い
+    assert!(highlighted(&viewer()).is_empty());
 }
 
 #[test]
 fn scrolls_to_keep_the_current_ply_visible() {
     let mut v = viewer();
     v.last();
-    let screen = pane(&draw(&v), 1);
+    let screen = pane(&draw(&v), MOVES);
     assert!(
         screen.iter().any(|l| l.contains("Qf1#")),
         "終局手が見えること: {screen:?}"
@@ -253,7 +293,7 @@ fn leaves_the_eval_blank_when_absent() {
     // 終局手には注釈が無い。0.00 と紛れる表示にしない
     let mut v = viewer();
     v.last();
-    let screen = pane(&draw(&v), 1);
+    let screen = pane(&draw(&v), MOVES);
     let line = screen.iter().find(|l| l.contains("Qf1#")).unwrap();
     assert!(
         !line.contains("0.00"),

@@ -4,8 +4,10 @@
 //! widget が状態を持たないため、手の移動は添字の操作だけで完結する。
 
 mod board;
+mod moves;
 
 use ratatui::Frame;
+use ratatui::layout::{Constraint, Layout};
 use ratatui::widgets::{Block, Paragraph};
 use shakmaty::{Chess, Position};
 
@@ -72,10 +74,19 @@ impl Viewer {
 
     /// 現在の状態を描く。
     pub fn render(&self, frame: &mut Frame) {
+        // 盤は 8 列 + 段番号で固定幅。残りを手順リストに渡す
+        let [left, right] =
+            Layout::horizontal([Constraint::Length(24), Constraint::Min(20)]).areas(frame.area());
+
         let position = self.position();
-        let widget = Paragraph::new(board::lines(position.board()))
+        let board = Paragraph::new(board::lines(position.board()))
             .block(Block::bordered().title(self.title()));
-        frame.render_widget(widget, frame.area());
+        frame.render_widget(board, left);
+
+        let inner_height = right.height.saturating_sub(2) as usize;
+        let list = Paragraph::new(moves::lines(&self.game.plies, self.cursor, inner_height))
+            .block(Block::bordered().title(" moves "));
+        frame.render_widget(list, right);
     }
 }
 
