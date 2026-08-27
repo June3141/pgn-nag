@@ -64,16 +64,23 @@ fn run_library() -> ExitCode {
 ///
 /// 空の一覧を出すと、設定の誤りとファイルが 1 つも無い状態が区別できない。
 fn explain_missing_config() -> ExitCode {
+    eprintln!("棋譜の置き場所が設定されていない。");
+    eprintln!();
+    print_config_hint();
+    ExitCode::FAILURE
+}
+
+/// 設定の書き方を示す。
+fn print_config_hint() {
     let path = config::default_path().map_or_else(
         || "設定ディレクトリ".to_owned(),
         |p| p.display().to_string(),
     );
-    eprintln!("棋譜の置き場所が設定されていない。{path} に次を書く:");
+    eprintln!("{path} に次を書く:");
     eprintln!();
     eprintln!("    games_dir = \"/path/to/games\"");
     eprintln!();
     eprintln!("パスを直接指定して開くこともできる: nag view <annotated.pgn|dir>");
-    ExitCode::FAILURE
 }
 
 /// ファイルまたはディレクトリを開く。

@@ -222,6 +222,10 @@ fn event_loop(terminal: &mut ratatui::DefaultTerminal, viewer: &mut Viewer) -> s
 
 /// 一覧から 1 つ選ばせる。取り消されたら None を返す。
 pub fn choose(items: Vec<String>, title: &'static str) -> std::io::Result<Option<usize>> {
+    if items.is_empty() {
+        // 0 件で Picker を作ると、Enter が存在しない添字を返す
+        return Ok(None);
+    }
     if items.len() == 1 {
         // 1 つしか無い一覧を見せても選ぶ余地が無い
         return Ok(Some(0));

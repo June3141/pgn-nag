@@ -118,6 +118,13 @@ mod tests {
     use super::scroll_offset;
 
     #[test]
+    fn clamps_at_the_tail() {
+        // 末尾で詰めないと、下半分が空欄のまま送られる
+        assert_eq!(scroll_offset(49, 50, 8), 42);
+        assert_eq!(scroll_offset(9, 10, 8), 2);
+    }
+
+    #[test]
     fn keeps_the_selection_visible() {
         for total in [1usize, 5, 50] {
             for visible in [1usize, 3, 10] {

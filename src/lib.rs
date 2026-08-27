@@ -1,5 +1,6 @@
 //! 注釈付き PGN を読み書きするための公開 API。
 
+pub mod cli;
 pub mod config;
 pub mod library;
 pub mod model;
