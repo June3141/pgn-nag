@@ -13,6 +13,8 @@ usage: uv run pgn_annotate.py <in.pgn|dir> [-o out.pgn] [--depth 18]
 import argparse, os, pathlib, shutil, sys
 import chess, chess.engine, chess.pgn
 
+PV_PLIES = 6  # ADR-0002。保存する最善手順の上限
+
 # 実行パスは PGN_NAG_ENGINE か PATH から解決する。直書きすると環境を跨げない。
 ENGINE = os.environ.get("PGN_NAG_ENGINE") or shutil.which("stockfish")
 if not ENGINE:
@@ -21,14 +23,23 @@ if not ENGINE:
 
 def annotate(game, eng, depth):
     """各手に [%eval] と [%pv] を書き込む。評価は常に白視点で保存する。"""
+    # centipawn の尺度は engine とそのバージョンに依存する。出所を残さないと
+    # 異なる条件で解析した値が混ざったことに後から気付けない
+    if "name" not in eng.id:
+        # 出所不明の値を書くと、条件の違う評価値が混ざったことを検出できなくなる
+        sys.exit("engine が id name を返さない。Annotator を記録できない")
+    game.headers["Annotator"] = eng.id["name"]
     node = game
     while node.variations:
         node = node.variations[0]
-        info = eng.analyse(node.board(), chess.engine.Limit(depth=depth))
+        # game を局面ごとに変えると python-chess が ucinewgame を送る。
+        # 送らないと置換表が局面をまたいで残り、評価値が解析順に依存する。
+        # 同じ棋譜でもファイル内の位置が違えば別の値になり、差分比較が成立しない
+        info = eng.analyse(node.board(), chess.engine.Limit(depth=depth), game=object())
         # set_eval は PovScore を受け、白視点の [%eval] として直列化する
-        node.set_eval(info["score"], depth)
+        node.set_eval(info["score"], info.get("depth", depth))
         if pv := info.get("pv"):
-            pv_uci = " ".join(m.uci() for m in pv[:6])
+            pv_uci = " ".join(m.uci() for m in pv[:PV_PLIES])
             # %pv は非標準だが、未知の %tag は他ツールが黙って無視する
             node.comment = f"{node.comment} [%pv {pv_uci}]".strip()
     return game
