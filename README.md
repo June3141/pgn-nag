@@ -30,9 +30,9 @@ nag view annotated.pgn
 `analyze` は棋譜の各局面を解析し、評価値と最善手順を注釈として書き込む。
 `view` は盤面と評価値を並べて表示し、悪手を辿って移動できる。
 
-## 状態
+## 進め方
 
-進め方と各段階の完了条件は [milestone](https://github.com/June3141/pgn-nag/milestones) にある。
+各段階と完了条件は [milestone](https://github.com/June3141/pgn-nag/milestones) にある。
 
 ## ライセンス
 
