@@ -16,9 +16,9 @@ fn viewer() -> Viewer {
     Viewer::new(game)
 }
 
-/// 画面を行ごとに返す。枠と行末の余白は落とす。
+/// 画面を行ごとに返す。行末の余白は落とす。
 fn draw(viewer: &Viewer) -> Vec<String> {
-    let mut terminal = Terminal::new(TestBackend::new(48, 14)).unwrap();
+    let mut terminal = Terminal::new(TestBackend::new(64, 14)).unwrap();
     terminal.draw(|frame| viewer.render(frame)).unwrap();
     let buffer = terminal.backend().buffer().clone();
     let width = buffer.area.width as usize;
@@ -29,7 +29,20 @@ fn draw(viewer: &Viewer) -> Vec<String> {
             row.iter()
                 .map(|cell| cell.symbol())
                 .collect::<String>()
-                .trim_matches('│')
+                .trim_end()
+                .to_owned()
+        })
+        .collect()
+}
+
+/// 枠で区切られた n 番目の領域を行ごとに取り出す。
+fn pane(screen: &[String], index: usize) -> Vec<String> {
+    screen
+        .iter()
+        .map(|line| {
+            line.split('│')
+                .nth(index + 1)
+                .unwrap_or("")
                 .trim_end()
                 .to_owned()
         })
@@ -44,7 +57,7 @@ fn press(viewer: &mut Viewer, code: KeyCode) -> Action {
 fn draws_the_board_from_whites_side() {
     // 段の番号と駒の並びを行ごと突き合わせる。
     // 部分一致で見ると盤を上下逆にしても通ってしまう
-    let screen = draw(&viewer());
+    let screen = pane(&draw(&viewer()), 0);
     let board: Vec<&str> = screen[1..10].iter().map(String::as_str).collect();
     assert_eq!(
         board,
@@ -66,7 +79,7 @@ fn draws_the_board_from_whites_side() {
 fn advancing_moves_a_single_pawn() {
     let mut v = viewer();
     v.next(); // 1. d4
-    let screen = draw(&v);
+    let screen = pane(&draw(&v), 0);
     assert_eq!(screen[5], "4  . . . P . . . .");
     assert_eq!(screen[7], "2  P P P . P P P P");
 }
@@ -183,4 +196,67 @@ fn modifier_keys_do_not_move() {
         KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL),
     );
     assert_eq!(draw(&v), before);
+}
+
+#[test]
+fn lists_moves_with_evals() {
+    let screen = pane(&draw(&viewer()), 1);
+    // 1. d4 { [%eval 0.32,18] }  1... c6 { [%eval 0.32,18] }
+    assert!(
+        screen
+            .iter()
+            .any(|l| l.contains("1.") && l.contains("d4") && l.contains("+0.32")),
+        "手番号と SAN と評価値が並ぶこと: {screen:?}"
+    );
+    assert!(
+        screen
+            .iter()
+            .any(|l| l.contains("1...") && l.contains("c6"))
+    );
+}
+
+#[test]
+fn shows_mate_as_mate() {
+    // 終盤は [%eval #-1,18]。centipawn に潰して表示しない
+    let mut v = viewer();
+    v.last();
+    let screen = pane(&draw(&v), 1);
+    assert!(
+        screen.iter().any(|l| l.contains("#-1")),
+        "詰みを詰みとして出すこと: {screen:?}"
+    );
+}
+
+#[test]
+fn marks_the_current_ply() {
+    let mut v = viewer();
+    v.next();
+    let one = pane(&draw(&v), 1);
+    v.next();
+    let two = pane(&draw(&v), 1);
+    assert_ne!(one, two, "現在の手が変われば手順リストの見た目も変わること");
+}
+
+#[test]
+fn scrolls_to_keep_the_current_ply_visible() {
+    let mut v = viewer();
+    v.last();
+    let screen = pane(&draw(&v), 1);
+    assert!(
+        screen.iter().any(|l| l.contains("Qf1#")),
+        "終局手が見えること: {screen:?}"
+    );
+}
+
+#[test]
+fn leaves_the_eval_blank_when_absent() {
+    // 終局手には注釈が無い。0.00 と紛れる表示にしない
+    let mut v = viewer();
+    v.last();
+    let screen = pane(&draw(&v), 1);
+    let line = screen.iter().find(|l| l.contains("Qf1#")).unwrap();
+    assert!(
+        !line.contains("0.00"),
+        "注釈が無い手を 0.00 と出さないこと: {line}"
+    );
 }
