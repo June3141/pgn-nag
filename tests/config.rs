@@ -1,0 +1,104 @@
+//! 設定の読み込み。
+//!
+//! 設定は利用者が書き、`nag` は読むだけになる (ADR-0012)。
+
+use std::path::Path;
+
+use pgn_nag::config::{self, Config};
+
+fn write(dir: &Path, body: &str) -> std::path::PathBuf {
+    let path = dir.join("config.toml");
+    std::fs::write(&path, body).unwrap();
+    path
+}
+
+#[test]
+fn missing_file_is_not_an_error() {
+    let dir = tempdir();
+    let found = config::load_from(&dir.join("config.toml")).unwrap();
+    assert!(
+        found.is_none(),
+        "設定が無い状態と壊れている状態を区別すること"
+    );
+}
+
+#[test]
+fn reads_all_fields() {
+    let dir = tempdir();
+    let path = write(
+        &dir,
+        r#"
+engine = "/usr/games/stockfish"
+games_dir = "/home/me/games"
+
+[thresholds]
+inaccuracy = 40
+mistake = 90
+blunder = 180
+"#,
+    );
+    let c = config::load_from(&path).unwrap().unwrap();
+    assert_eq!(c.engine.unwrap().to_str().unwrap(), "/usr/games/stockfish");
+    assert_eq!(c.games_dir.unwrap().to_str().unwrap(), "/home/me/games");
+    assert_eq!(c.thresholds.inaccuracy, 40);
+    assert_eq!(c.thresholds.mistake, 90);
+    assert_eq!(c.thresholds.blunder, 180);
+}
+
+#[test]
+fn omitted_fields_fall_back_to_defaults() {
+    let dir = tempdir();
+    let path = write(&dir, "games_dir = \"/tmp/games\"\n");
+    let c = config::load_from(&path).unwrap().unwrap();
+    assert!(c.engine.is_none(), "engine は PATH から解決する余地を残す");
+    assert_eq!(c.thresholds, Config::default().thresholds);
+}
+
+#[test]
+fn thresholds_can_be_set_one_at_a_time() {
+    // 1 つ緩めるために 3 つとも書き写させない
+    let dir = tempdir();
+    let path = write(&dir, "[thresholds]\ninaccuracy = 40\n");
+    let t = config::load_from(&path).unwrap().unwrap().thresholds;
+    assert_eq!(t.inaccuracy, 40);
+    assert_eq!(t.mistake, Config::default().thresholds.mistake);
+    assert_eq!(t.blunder, Config::default().thresholds.blunder);
+}
+
+#[test]
+fn default_thresholds_match_the_documented_values() {
+    let t = Config::default().thresholds;
+    assert_eq!((t.inaccuracy, t.mistake, t.blunder), (50, 100, 200));
+}
+
+#[test]
+fn broken_file_is_an_error() {
+    let dir = tempdir();
+    let path = write(&dir, "engine = \n");
+    assert!(
+        config::load_from(&path).is_err(),
+        "壊れた設定を既定値で黙って上書きしないこと"
+    );
+}
+
+#[test]
+fn unknown_keys_are_rejected() {
+    // 綴りを間違えた設定が黙って無視されると、効いていないことに気付けない
+    let dir = tempdir();
+    let path = write(&dir, "engien = \"/usr/games/stockfish\"\n");
+    assert!(config::load_from(&path).is_err());
+}
+
+/// テスト用の一時ディレクトリ。`HOME` には触れない。
+///
+/// 作り直してから使う。残したままだと、前回の実行の設定を読んでしまう。
+fn tempdir() -> std::path::PathBuf {
+    let base = std::env::temp_dir().join(format!(
+        "pgn-nag-test-{}-{:?}",
+        std::process::id(),
+        std::thread::current().id()
+    ));
+    let _ = std::fs::remove_dir_all(&base);
+    std::fs::create_dir_all(&base).unwrap();
+    base
+}
