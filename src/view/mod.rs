@@ -52,40 +52,51 @@ impl Viewer {
         self.cursor = self.game.plies.len();
     }
 
-    /// 見出しに出す対局者と結果。
-    fn title(&self) -> String {
+    /// 盤の見出しに出す対局者。
+    fn players(&self) -> String {
         let tag = |name: &str| {
             self.game
                 .tags
                 .iter()
                 .find(|(k, _)| k == name)
                 .map_or("?", |(_, v)| v.as_str())
-                .to_owned()
         };
+        format!(" {} vs {} ", tag("White"), tag("Black"))
+    }
+
+    /// 手順リストの見出しに出す現在位置と結果。
+    ///
+    /// 盤の枠は対局者名で埋まるため、こちらに置く。
+    fn progress(&self) -> String {
         format!(
-            " {} vs {}  ·  {}  ·  {}/{} ",
-            tag("White"),
-            tag("Black"),
-            self.game.outcome,
+            " {}/{}  ·  {} ",
             self.cursor,
-            self.game.plies.len()
+            self.game.plies.len(),
+            self.game.outcome
         )
     }
 
     /// 現在の状態を描く。
     pub fn render(&self, frame: &mut Frame) {
-        // 盤は 8 列 + 段番号で固定幅。残りを手順リストに渡す
+        // 盤は段番号込みで固定幅。残りを手順リストに渡す。
+        // 右を Min にすると solver がそちらを優先し、狭い端末で盤のほうが削られる
         let [left, right] =
-            Layout::horizontal([Constraint::Length(24), Constraint::Min(20)]).areas(frame.area());
+            Layout::horizontal([Constraint::Length(24), Constraint::Fill(1)]).areas(frame.area());
 
         let position = self.position();
         let board = Paragraph::new(board::lines(position.board()))
-            .block(Block::bordered().title(self.title()));
+            .block(Block::bordered().title(self.players()));
         frame.render_widget(board, left);
 
         let inner_height = right.height.saturating_sub(2) as usize;
-        let list = Paragraph::new(moves::lines(&self.game.plies, self.cursor, inner_height))
-            .block(Block::bordered().title(" moves "));
+        let inner_width = right.width.saturating_sub(2) as usize;
+        let list = Paragraph::new(moves::lines(
+            &self.game.plies,
+            self.cursor,
+            inner_height,
+            inner_width,
+        ))
+        .block(Block::bordered().title(self.progress()));
         frame.render_widget(list, right);
     }
 }

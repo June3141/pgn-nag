@@ -53,3 +53,16 @@ pub struct Game {
     /// 終局結果の表記。`1-0` `0-1` `1/2-1/2` `*` のいずれか。
     pub outcome: String,
 }
+
+/// 手順リストと PGN の双方で使う手番号の表記。
+///
+/// 白の手は `1.`、黒の手は `1...` になる。
+/// 表記が 2 箇所に分かれると、片方だけ直る事故が起きる。
+pub fn move_marker(index: usize) -> String {
+    let number = index / 2 + 1;
+    if index.is_multiple_of(2) {
+        format!("{number}.")
+    } else {
+        format!("{number}...")
+    }
+}
