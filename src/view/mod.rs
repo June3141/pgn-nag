@@ -10,6 +10,8 @@ pub mod keys;
 mod moves;
 mod status;
 
+pub use help::render as render_help;
+
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::widgets::{Block, Paragraph};
@@ -165,8 +167,6 @@ pub fn apply_key(viewer: &mut Viewer, key: ratatui::crossterm::event::KeyEvent) 
 ///
 /// 端末の後始末は ratatui の `restore` が行う。
 /// panic しても端末が壊れたままにならないよう、`init` が hook を差し込む。
-pub use help::render as render_help;
-
 pub fn run(mut viewer: Viewer) -> std::io::Result<()> {
     // init は失敗時に panic する。端末が無い経路でも呼び出し側へ返す
     let mut terminal = ratatui::try_init()?;
