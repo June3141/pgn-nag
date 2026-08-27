@@ -492,6 +492,41 @@ fn handles_evals_without_depth() {
 }
 
 #[test]
+fn eval_bar_is_empty_when_black_mates() {
+    // 詰みの向きを反転しても気付けるようにする
+    let mut v = viewer();
+    for _ in 0..94 {
+        v.next();
+    }
+    assert_eq!(eval_bar(&v), "░░░░░░░░", "黒が詰ませる局面");
+}
+
+#[test]
+fn keeps_the_board_on_a_short_terminal() {
+    // 状態行を優先すると盤の段が黙って消える。
+    // 逆に高さが足りないまま状態行を描くと、底辺の無い枠が残る
+    for height in [11u16, 12, 13, 14] {
+        let mut terminal = Terminal::new(TestBackend::new(WIDTH as u16, height)).unwrap();
+        terminal.draw(|frame| viewer().render(frame)).unwrap();
+        let buffer = terminal.backend().buffer().clone();
+        let width = buffer.area.width as usize;
+        let rows: Vec<String> = buffer
+            .content()
+            .chunks(width)
+            .map(|row| row.iter().map(|c| c.symbol()).collect())
+            .collect();
+        let screen = rows.join("\n");
+        assert!(
+            screen.contains("a b c d e f g h"),
+            "高さ {height} で盤が削られている"
+        );
+        let opens = screen.matches('┌').count();
+        let closes = screen.matches('└').count();
+        assert_eq!(opens, closes, "高さ {height} で閉じない枠が残る:\n{screen}");
+    }
+}
+
+#[test]
 fn eval_bar_follows_the_advantage() {
     use pgn_nag::Score;
 
