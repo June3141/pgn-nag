@@ -6,7 +6,7 @@ PGN の棋譜を UCI エンジンで一括解析し、注釈付き PGN として
 NAG は Numeric Annotation Glyph の略で、`?` や `??` といった手の評価記号を PGN 上で表す記法を指す。
 
 開発中で、まだ動作するものはない。
-設計判断は [docs/adr/](docs/adr/README.md) にある。
+設計判断は [docs/adr/README.md](docs/adr/README.md) にある。
 
 ## 何をするか
 
@@ -30,10 +30,9 @@ nag view annotated.pgn
 `analyze` は棋譜の各局面を解析し、評価値と最善手順を注釈として書き込む。
 `view` は盤面と評価値を並べて表示し、悪手を辿って移動できる。
 
-## 状態
+## 進め方
 
-実装は未着手。
-進め方と各段階の完了条件は [milestone](https://github.com/June3141/pgn-nag/milestones) にある。
+各段階と完了条件は [milestone](https://github.com/June3141/pgn-nag/milestones) にある。
 
 ## ライセンス
 
