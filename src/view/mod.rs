@@ -121,12 +121,16 @@ impl Viewer {
         .block(Block::bordered().title(self.progress()));
         frame.render_widget(list, right);
 
-        let line = Paragraph::new(status::line(
-            self.current_ply(),
-            self.cursor.saturating_sub(1),
-        ))
-        .block(Block::bordered());
-        frame.render_widget(line, bottom);
+        // Min を優先する solver は Length(3) を割り込む。
+        // 枠に足りない高さで描くと、底辺の無い枠が最下段に残る
+        if bottom.height >= 3 {
+            let line = Paragraph::new(status::line(
+                self.current_ply(),
+                self.cursor.saturating_sub(1),
+            ))
+            .block(Block::bordered());
+            frame.render_widget(line, bottom);
+        }
     }
 }
 
