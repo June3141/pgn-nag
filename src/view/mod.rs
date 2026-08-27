@@ -81,6 +81,21 @@ impl Viewer {
     }
 }
 
+/// キー入力の結果。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Action {
+    Continue,
+    Quit,
+}
+
+/// キー 1 つを状態に適用する。
+///
+/// 入力の読み取りと分けておく。
+/// 同じ関数に抱えると、キーの割り当てをテストから確認できない。
+pub fn apply_key(_viewer: &mut Viewer, _key: ratatui::crossterm::event::KeyEvent) -> Action {
+    todo!("M2")
+}
+
 /// 端末を初期化してイベントループを回す。
 ///
 /// 端末の後始末は ratatui の `restore` が行う。
