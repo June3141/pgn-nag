@@ -4,7 +4,7 @@
 # dependabot は このファイルを更新しないので channel の更新は手動になる。
 # 上げるときは Cargo.toml の rust-version も併せて上げること。
 [toolchain]
-channel = "1.93.0"
+channel = "1.98.0"
 components = ["rustfmt", "clippy"]
 # rust-cache は ~/.rustup を対象にせず、toolchain は毎ジョブ取得される。
 # minimal にして components に挙げたものだけを落とす
