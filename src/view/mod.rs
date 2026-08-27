@@ -6,7 +6,6 @@
 mod board;
 
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Layout};
 use ratatui::widgets::{Block, Paragraph};
 use shakmaty::{Chess, Position};
 
@@ -28,7 +27,7 @@ impl Viewer {
     }
 
     /// 表示する局面。
-    pub fn position(&self) -> Chess {
+    fn position(&self) -> Chess {
         match self.cursor.checked_sub(1) {
             None => Chess::default(),
             Some(i) => self.game.plies[i].position.clone(),
@@ -73,11 +72,10 @@ impl Viewer {
 
     /// 現在の状態を描く。
     pub fn render(&self, frame: &mut Frame) {
-        let [area] = Layout::vertical([Constraint::Min(0)]).areas(frame.area());
         let position = self.position();
         let widget = Paragraph::new(board::lines(position.board()))
             .block(Block::bordered().title(self.title()));
-        frame.render_widget(widget, area);
+        frame.render_widget(widget, frame.area());
     }
 }
 
@@ -92,8 +90,27 @@ pub enum Action {
 ///
 /// 入力の読み取りと分けておく。
 /// 同じ関数に抱えると、キーの割り当てをテストから確認できない。
-pub fn apply_key(_viewer: &mut Viewer, _key: ratatui::crossterm::event::KeyEvent) -> Action {
-    todo!("M2")
+pub fn apply_key(viewer: &mut Viewer, key: ratatui::crossterm::event::KeyEvent) -> Action {
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
+
+    // raw mode では ISIG が落ちて Ctrl+C が SIGINT にならない。
+    // 受けないと、描画が壊れた状況で脱出手段が q だけになる
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        return match key.code {
+            KeyCode::Char('c') => Action::Quit,
+            _ => Action::Continue,
+        };
+    }
+    match key.code {
+        KeyCode::Char('q') => return Action::Quit,
+        KeyCode::Right | KeyCode::Char('l') => viewer.next(),
+        KeyCode::Left | KeyCode::Char('h') => viewer.prev(),
+        KeyCode::Char('g') => viewer.first(),
+        KeyCode::Char('G') => viewer.last(),
+        // 上下は悪手を辿る移動のために空けてある (ADR-0009)
+        _ => {}
+    }
+    Action::Continue
 }
 
 /// 端末を初期化してイベントループを回す。
@@ -101,14 +118,15 @@ pub fn apply_key(_viewer: &mut Viewer, _key: ratatui::crossterm::event::KeyEvent
 /// 端末の後始末は ratatui の `restore` が行う。
 /// panic しても端末が壊れたままにならないよう、`init` が hook を差し込む。
 pub fn run(mut viewer: Viewer) -> std::io::Result<()> {
-    let mut terminal = ratatui::init();
+    // init は失敗時に panic する。端末が無い経路でも呼び出し側へ返す
+    let mut terminal = ratatui::try_init()?;
     let result = event_loop(&mut terminal, &mut viewer);
     ratatui::restore();
     result
 }
 
 fn event_loop(terminal: &mut ratatui::DefaultTerminal, viewer: &mut Viewer) -> std::io::Result<()> {
-    use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
+    use ratatui::crossterm::event::{self, Event, KeyEventKind};
     loop {
         terminal.draw(|frame| viewer.render(frame))?;
         let Event::Key(key) = event::read()? else {
@@ -118,13 +136,8 @@ fn event_loop(terminal: &mut ratatui::DefaultTerminal, viewer: &mut Viewer) -> s
         if key.kind != KeyEventKind::Press {
             continue;
         }
-        match key.code {
-            KeyCode::Char('q') => return Ok(()),
-            KeyCode::Right | KeyCode::Char('l') => viewer.next(),
-            KeyCode::Left | KeyCode::Char('h') => viewer.prev(),
-            KeyCode::Char('g') => viewer.first(),
-            KeyCode::Char('G') => viewer.last(),
-            _ => {}
+        if apply_key(viewer, key) == Action::Quit {
+            return Ok(());
         }
     }
 }
