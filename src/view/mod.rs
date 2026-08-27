@@ -10,6 +10,8 @@ pub mod keys;
 mod moves;
 mod status;
 
+pub use help::render as render_help;
+
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::widgets::{Block, Paragraph};
@@ -94,9 +96,10 @@ impl Viewer {
 
     /// 現在の状態を描く。
     pub fn render(&self, frame: &mut Frame) {
-        // 状態行は 1 行 + 枠で 3 行を占める
+        // 盤は枠込みで 11 行要る。状態行を優先すると低い端末で盤が削られるため、
+        // 盤の側を Min にして先に確保する
         let [top, bottom] =
-            Layout::vertical([Constraint::Fill(1), Constraint::Length(3)]).areas(frame.area());
+            Layout::vertical([Constraint::Min(11), Constraint::Length(3)]).areas(frame.area());
 
         // 盤は段番号込みで固定幅。残りを手順リストに渡す。
         // 右を Min にすると solver がそちらを優先し、狭い端末で盤のほうが削られる
@@ -122,7 +125,11 @@ impl Viewer {
         .block(Block::bordered().title(self.progress()));
         frame.render_widget(list, right);
 
-        let line = Paragraph::new(status::line(self.current_ply())).block(Block::bordered());
+        let line = Paragraph::new(status::line(
+            self.current_ply(),
+            self.cursor.saturating_sub(1),
+        ))
+        .block(Block::bordered());
         frame.render_widget(line, bottom);
     }
 }
@@ -160,8 +167,6 @@ pub fn apply_key(viewer: &mut Viewer, key: ratatui::crossterm::event::KeyEvent) 
 ///
 /// 端末の後始末は ratatui の `restore` が行う。
 /// panic しても端末が壊れたままにならないよう、`init` が hook を差し込む。
-pub use help::render as render_help;
-
 pub fn run(mut viewer: Viewer) -> std::io::Result<()> {
     // init は失敗時に panic する。端末が無い経路でも呼び出し側へ返す
     let mut terminal = ratatui::try_init()?;
