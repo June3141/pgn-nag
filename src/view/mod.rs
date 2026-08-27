@@ -13,6 +13,22 @@ mod status;
 
 pub use help::render as render_help;
 
+/// 画面の中央に領域を取る。ヘルプと一覧の双方で使う。
+pub(crate) fn centered(
+    area: ratatui::layout::Rect,
+    width: u16,
+    height: u16,
+) -> ratatui::layout::Rect {
+    use ratatui::layout::Flex;
+    let [row] = Layout::vertical([Constraint::Length(height)])
+        .flex(Flex::Center)
+        .areas(area);
+    let [cell] = Layout::horizontal([Constraint::Length(width)])
+        .flex(Flex::Center)
+        .areas(row);
+    cell
+}
+
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::widgets::{Block, Paragraph};
@@ -73,14 +89,7 @@ impl Viewer {
 
     /// 盤の見出しに出す対局者。
     fn players(&self) -> String {
-        let tag = |name: &str| {
-            self.game
-                .tags
-                .iter()
-                .find(|(k, _)| k == name)
-                .map_or("?", |(_, v)| v.as_str())
-        };
-        format!(" {} vs {} ", tag("White"), tag("Black"))
+        format!(" {} vs {} ", self.game.tag("White"), self.game.tag("Black"))
     }
 
     /// 手順リストの見出しに出す現在位置と結果。
@@ -209,29 +218,37 @@ fn event_loop(terminal: &mut ratatui::DefaultTerminal, viewer: &mut Viewer) -> s
 
 /// 一覧から 1 つ選ばせる。取り消されたら None を返す。
 pub fn choose(items: Vec<String>, title: &'static str) -> std::io::Result<Option<usize>> {
-    use picker::PickerAction;
-    use ratatui::crossterm::event::{self, Event, KeyEventKind};
-
     if items.len() == 1 {
         // 1 つしか無い一覧を見せても選ぶ余地が無い
         return Ok(Some(0));
     }
     let mut terminal = ratatui::try_init()?;
-    let mut p = picker::Picker::new(title, items);
-    let chosen = loop {
-        terminal.draw(|frame| p.render(frame))?;
+    // 早期 return で restore を飛ばすと、raw mode のまま抜ける。
+    // init が差し込む hook が拾うのは panic だけになる
+    let result = pick(&mut terminal, picker::Picker::new(title, items));
+    ratatui::restore();
+    result
+}
+
+fn pick(
+    terminal: &mut ratatui::DefaultTerminal,
+    mut picker: picker::Picker,
+) -> std::io::Result<Option<usize>> {
+    use picker::PickerAction;
+    use ratatui::crossterm::event::{self, Event, KeyEventKind};
+
+    loop {
+        terminal.draw(|frame| picker.render(frame))?;
         let Event::Key(key) = event::read()? else {
             continue;
         };
         if key.kind != KeyEventKind::Press {
             continue;
         }
-        match p.apply(key) {
-            PickerAction::Choose(i) => break Some(i),
-            PickerAction::Cancel => break None,
+        match picker.apply(key) {
+            PickerAction::Choose(i) => return Ok(Some(i)),
+            PickerAction::Cancel => return Ok(None),
             PickerAction::Continue => {}
         }
-    };
-    ratatui::restore();
-    Ok(chosen)
+    }
 }

@@ -1,10 +1,10 @@
 //! ヘルプの表示。
 
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Clear, Paragraph};
 
+use super::centered;
 use super::keys::BINDINGS;
 
 /// キーの一覧を画面の中央に重ねて出す。
@@ -22,14 +22,4 @@ pub fn render(frame: &mut Frame) {
         Paragraph::new(rows).block(Block::bordered().title(" keys ")),
         area,
     );
-}
-
-fn centered(area: Rect, width: u16, height: u16) -> Rect {
-    let [row] = Layout::vertical([Constraint::Length(height)])
-        .flex(Flex::Center)
-        .areas(area);
-    let [cell] = Layout::horizontal([Constraint::Length(width)])
-        .flex(Flex::Center)
-        .areas(row);
-    cell
 }

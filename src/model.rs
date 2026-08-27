@@ -79,3 +79,15 @@ impl Score {
         }
     }
 }
+
+impl Game {
+    /// タグの値。無ければ `?` を返す。
+    ///
+    /// 一覧の見出しと盤の見出しの双方で使う。
+    pub fn tag(&self, name: &str) -> &str {
+        self.tags
+            .iter()
+            .find(|(k, _)| k == name)
+            .map_or("?", |(_, v)| v.as_str())
+    }
+}

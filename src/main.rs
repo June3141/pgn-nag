@@ -10,15 +10,22 @@ fn main() -> ExitCode {
     // Linux では合法なファイル名なので、入力の境界で握らない
     let mut args = std::env::args_os().skip(1);
     let first = args.next();
-    match first.as_deref().and_then(std::ffi::OsStr::to_str) {
+    // OsStr のまま比べる。to_str を挟むと、UTF-8 でない引数が
+    // 引数なしと同じ枝に落ちて設定案内が出る
+    match first.as_deref() {
         // 引数なしは、設定した棋譜置き場を一覧にする (ADR-0012)
         None => run_library(),
-        Some("view") => match (args.next(), args.next()) {
+        Some(command) if command == "view" => match (args.next(), args.next()) {
             (Some(path), None) => open(&PathBuf::from(path)),
             _ => usage(ExitCode::FAILURE),
         },
-        Some("-h" | "--help" | "help") if args.next().is_none() => usage(ExitCode::SUCCESS),
-        _ => usage(ExitCode::FAILURE),
+        Some(command)
+            if matches!(command.to_str(), Some("-h" | "--help" | "help"))
+                && args.next().is_none() =>
+        {
+            usage(ExitCode::SUCCESS)
+        }
+        Some(_) => usage(ExitCode::FAILURE),
     }
 }
 
@@ -44,6 +51,12 @@ fn run_library() -> ExitCode {
     let Some(dir) = settings.games_dir else {
         return explain_missing_config();
     };
+    if !dir.is_dir() {
+        // ADR-0012 はディレクトリが存在しない場合も書き方を示すと決めている。
+        // PGN として開こうとすると、設定の誤りが読み取りの失敗として出る
+        eprintln!("games_dir がディレクトリでない: {}", dir.display());
+        return explain_missing_config();
+    }
     open(&dir)
 }
 
@@ -98,7 +111,7 @@ fn choose_file(dir: &Path) -> Result<Option<PathBuf>, ExitCode> {
                 .into_owned()
         })
         .collect();
-    match view::choose(labels, " games ") {
+    match view::choose(labels, " files ") {
         Ok(Some(i)) => Ok(Some(files[i].clone())),
         Ok(None) => Ok(None),
         Err(e) => {
@@ -150,17 +163,11 @@ fn open_file(path: &Path) -> ExitCode {
 
 /// 一覧に出す対局の見出し。
 fn label(game: &pgn_nag::Game) -> String {
-    let tag = |name: &str| {
-        game.tags
-            .iter()
-            .find(|(k, _)| k == name)
-            .map_or("?", |(_, v)| v.as_str())
-    };
     format!(
         "{} vs {}  {}  {}",
-        tag("White"),
-        tag("Black"),
-        tag("Date"),
+        game.tag("White"),
+        game.tag("Black"),
+        game.tag("Date"),
         game.outcome
     )
 }

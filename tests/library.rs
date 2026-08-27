@@ -56,3 +56,14 @@ fn missing_directory_is_an_error() {
     let dir = scratch("gone").join("nope");
     assert!(library::pgn_files(&dir).is_err(), "空の一覧と区別すること");
 }
+
+#[test]
+fn ignores_directories_named_like_pgn() {
+    // `x.pgn` という名前のディレクトリを一覧に混ぜない
+    let dir = scratch("dirlike");
+    std::fs::write(dir.join("real.pgn"), "").unwrap();
+    std::fs::create_dir_all(dir.join("fake.pgn")).unwrap();
+    let found = library::pgn_files(&dir).unwrap();
+    assert_eq!(found.len(), 1);
+    assert!(found[0].ends_with("real.pgn"));
+}

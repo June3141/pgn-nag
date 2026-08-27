@@ -5,7 +5,9 @@ PGN の棋譜を UCI エンジンで一括解析し、注釈付き PGN として
 コマンド名は `nag` になる。
 NAG は Numeric Annotation Glyph の略で、`?` や `??` といった手の評価記号を PGN 上で表す記法を指す。
 
-開発中で、まだ動作するものはない。
+開発中。
+注釈付き PGN を読んで閲覧するところまで動く。
+解析はまだ実装していない。
 設計判断は [docs/adr/README.md](docs/adr/README.md) にある。
 
 ## 何をするか
@@ -25,10 +27,32 @@ PGN ──[ nag analyze ]──> annotated PGN ──[ nag view ]──> 端末 
 ```bash
 nag analyze games/ --depth 18 -o annotated.pgn
 nag view annotated.pgn
+nag                          # 設定した置き場所から選ぶ
 ```
 
 `analyze` は棋譜の各局面を解析し、評価値と最善手順を注釈として書き込む。
 `view` は盤面と評価値を並べて表示し、悪手を辿って移動できる。
+`view` にはディレクトリも渡せる。
+
+## 設定
+
+設定は書かなくても `nag view <path>` は動く。
+引数なしで起動したいときだけ要る。
+
+置き場所は OS ごとに異なり、Linux では `~/.config/nag/config.toml` になる。
+
+```toml
+games_dir = "/home/me/games"
+engine = "/usr/games/stockfish"
+
+[thresholds]
+inaccuracy = 50
+mistake = 100
+blunder = 200
+```
+
+いずれも省略できる。
+`nag` は設定を読むだけで書き込まない。
 
 ## 進め方
 

@@ -3,7 +3,8 @@
 //! 棋譜ファイルの一覧にも、ファイル内の対局の一覧にも使う。
 
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Flex, Layout, Rect};
+
+use super::centered;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Clear, Paragraph};
@@ -17,6 +18,11 @@ pub enum PickerAction {
     Choose(usize),
     Cancel,
 }
+
+/// 一覧に添える操作の案内。
+///
+/// 一覧画面はヘルプを持たないため、画面内に書く。
+const LEGEND: &str = " ↑↓ 移動   Enter 決定   q 取消 ";
 
 /// 選択中の一覧。
 pub struct Picker {
@@ -65,10 +71,22 @@ impl Picker {
     }
 
     pub fn render(&self, frame: &mut Frame) {
+        #[allow(clippy::cast_possible_truncation)]
+        let height = (self.items.len() as u16)
+            .saturating_add(2)
+            .min(frame.area().height);
+        let area = centered(frame.area(), frame.area().width.saturating_sub(4), height);
+        let visible = area.height.saturating_sub(2) as usize;
+
+        // 全件を渡すと、端末に収まらない一覧で選択中の行が画面外に出る。
+        // 件数はディレクトリの中身しだいで、収まる保証が無い
+        let offset = scroll_offset(self.cursor, self.items.len(), visible);
         let rows: Vec<Line<'static>> = self
             .items
             .iter()
             .enumerate()
+            .skip(offset)
+            .take(visible)
             .map(|(i, item)| {
                 let style = if i == self.cursor {
                     Style::default().add_modifier(Modifier::REVERSED)
@@ -79,25 +97,38 @@ impl Picker {
             })
             .collect();
 
-        #[allow(clippy::cast_possible_truncation)]
-        let height = (rows.len() as u16)
-            .saturating_add(2)
-            .min(frame.area().height);
-        let area = centered(frame.area(), frame.area().width.saturating_sub(4), height);
         frame.render_widget(Clear, area);
         frame.render_widget(
-            Paragraph::new(rows).block(Block::bordered().title(self.title)),
+            Paragraph::new(rows).block(Block::bordered().title(self.title).title_bottom(LEGEND)),
             area,
         );
     }
 }
 
-fn centered(area: Rect, width: u16, height: u16) -> Rect {
-    let [row] = Layout::vertical([Constraint::Length(height)])
-        .flex(Flex::Center)
-        .areas(area);
-    let [cell] = Layout::horizontal([Constraint::Length(width)])
-        .flex(Flex::Center)
-        .areas(row);
-    cell
+/// 選択中の行が見えるように、先頭から何件送るか。
+fn scroll_offset(cursor: usize, total: usize, visible: usize) -> usize {
+    if total <= visible || visible == 0 {
+        return 0;
+    }
+    cursor.saturating_sub(visible / 2).min(total - visible)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::scroll_offset;
+
+    #[test]
+    fn keeps_the_selection_visible() {
+        for total in [1usize, 5, 50] {
+            for visible in [1usize, 3, 10] {
+                for cursor in 0..total {
+                    let offset = scroll_offset(cursor, total, visible);
+                    assert!(
+                        (offset..offset + visible).contains(&cursor),
+                        "選択中の行が画面外: total={total} visible={visible} cursor={cursor}"
+                    );
+                }
+            }
+        }
+    }
 }
