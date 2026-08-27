@@ -8,6 +8,7 @@ mod evalbar;
 mod help;
 pub mod keys;
 mod moves;
+pub mod picker;
 mod status;
 
 use ratatui::Frame;
@@ -199,4 +200,33 @@ fn event_loop(terminal: &mut ratatui::DefaultTerminal, viewer: &mut Viewer) -> s
             }
         }
     }
+}
+
+/// 一覧から 1 つ選ばせる。取り消されたら None を返す。
+pub fn choose(items: Vec<String>, title: &'static str) -> std::io::Result<Option<usize>> {
+    use picker::PickerAction;
+    use ratatui::crossterm::event::{self, Event, KeyEventKind};
+
+    if items.len() == 1 {
+        // 1 つしか無い一覧を見せても選ぶ余地が無い
+        return Ok(Some(0));
+    }
+    let mut terminal = ratatui::try_init()?;
+    let mut p = picker::Picker::new(title, items);
+    let chosen = loop {
+        terminal.draw(|frame| p.render(frame))?;
+        let Event::Key(key) = event::read()? else {
+            continue;
+        };
+        if key.kind != KeyEventKind::Press {
+            continue;
+        }
+        match p.apply(key) {
+            PickerAction::Choose(i) => break Some(i),
+            PickerAction::Cancel => break None,
+            PickerAction::Continue => {}
+        }
+    };
+    ratatui::restore();
+    Ok(chosen)
 }
