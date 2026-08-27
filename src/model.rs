@@ -66,3 +66,16 @@ pub fn move_marker(index: usize) -> String {
         format!("{number}...")
     }
 }
+
+impl Score {
+    /// 画面に出す表記。詰みは centipawn に潰さない。
+    ///
+    /// 手順リストと状態行の双方で使う。
+    /// 表記が 2 箇所に分かれると、片方だけ直る事故が起きる。
+    pub fn render(self) -> String {
+        match self {
+            Self::Cp(cp) => format!("{:+.2}", f64::from(cp) / 100.0),
+            Self::Mate(n) => format!("#{n}"),
+        }
+    }
+}

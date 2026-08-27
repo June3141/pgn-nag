@@ -68,6 +68,17 @@ fn omitted_fields_fall_back_to_defaults() {
 }
 
 #[test]
+fn thresholds_can_be_set_one_at_a_time() {
+    // 1 つ緩めるために 3 つとも書き写させない
+    let dir = tempdir();
+    let path = write(&dir, "[thresholds]\ninaccuracy = 40\n");
+    let t = config::load_from(&path).unwrap().unwrap().thresholds;
+    assert_eq!(t.inaccuracy, 40);
+    assert_eq!(t.mistake, Config::default().thresholds.mistake);
+    assert_eq!(t.blunder, Config::default().thresholds.blunder);
+}
+
+#[test]
 fn default_thresholds_match_the_documented_values() {
     let t = Config::default().thresholds;
     assert_eq!((t.inaccuracy, t.mistake, t.blunder), (50, 100, 200));
@@ -92,12 +103,15 @@ fn unknown_keys_are_rejected() {
 }
 
 /// テスト用の一時ディレクトリ。`HOME` には触れない。
+///
+/// 作り直してから使う。残したままだと、前回の実行の設定を読んでしまう。
 fn tempdir() -> std::path::PathBuf {
     let base = std::env::temp_dir().join(format!(
         "pgn-nag-test-{}-{:?}",
         std::process::id(),
         std::thread::current().id()
     ));
+    let _ = std::fs::remove_dir_all(&base);
     std::fs::create_dir_all(&base).unwrap();
     base
 }
