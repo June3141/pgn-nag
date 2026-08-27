@@ -562,3 +562,63 @@ fn eval_bar_follows_the_advantage() {
     );
     assert_eq!(filled(0), 0, "注釈が無い開始局面では出さないこと");
 }
+
+#[test]
+fn help_lists_every_binding() {
+    // ADR-0009: ヘルプに並ぶキーと実装のキーテーブルが過不足なく一致すること
+    use pgn_nag::view::keys;
+    let mut terminal = Terminal::new(TestBackend::new(WIDTH as u16, 20)).unwrap();
+    terminal.draw(pgn_nag::view::render_help).unwrap();
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area.width as usize;
+    let screen: String = buffer
+        .content()
+        .chunks(width)
+        .map(|row| row.iter().map(|c| c.symbol()).collect::<String>())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // TestBackend は全角文字の後ろに詰め物のセルを置く。
+    // 実際の端末では 2 桁で描かれるため、空白を除いて比べる
+    let squeezed = screen.replace(' ', "");
+    for binding in keys::BINDINGS {
+        assert!(
+            squeezed.contains(&binding.label.replace(' ', "")),
+            "{} がヘルプに出ていない",
+            binding.label
+        );
+        assert!(
+            squeezed.contains(&binding.description.replace(' ', "")),
+            "{} の説明がヘルプに出ていない",
+            binding.label
+        );
+    }
+}
+
+#[test]
+fn every_binding_key_is_handled() {
+    // 表に載っているキーが実際に効くこと
+    use pgn_nag::view::keys;
+    for binding in keys::BINDINGS {
+        for code in binding.codes {
+            assert!(
+                keys::command_for(KeyEvent::new(*code, KeyModifiers::NONE)).is_some(),
+                "{:?} が処理されていない",
+                code
+            );
+        }
+    }
+}
+
+#[test]
+fn help_is_reachable_and_dismissable() {
+    use pgn_nag::view::keys::{Command, command_for};
+    assert_eq!(
+        command_for(KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE)),
+        Some(Command::ToggleHelp)
+    );
+    assert_eq!(
+        command_for(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+        Some(Command::CloseHelp)
+    );
+}

@@ -5,8 +5,12 @@
 
 mod board;
 mod evalbar;
+mod help;
+pub mod keys;
 mod moves;
 mod status;
+
+pub use help::render as render_help;
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
@@ -146,24 +150,19 @@ pub enum Action {
 /// 入力の読み取りと分けておく。
 /// 同じ関数に抱えると、キーの割り当てをテストから確認できない。
 pub fn apply_key(viewer: &mut Viewer, key: ratatui::crossterm::event::KeyEvent) -> Action {
-    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
+    use keys::Command;
 
-    // raw mode では ISIG が落ちて Ctrl+C が SIGINT にならない。
-    // 受けないと、描画が壊れた状況で脱出手段が q だけになる
-    if key.modifiers.contains(KeyModifiers::CONTROL) {
-        return match key.code {
-            KeyCode::Char('c') => Action::Quit,
-            _ => Action::Continue,
-        };
-    }
-    match key.code {
-        KeyCode::Char('q') => return Action::Quit,
-        KeyCode::Right | KeyCode::Char('l') => viewer.next(),
-        KeyCode::Left | KeyCode::Char('h') => viewer.prev(),
-        KeyCode::Char('g') => viewer.first(),
-        KeyCode::Char('G') => viewer.last(),
-        // 上下は悪手を辿る移動のために空けてある (ADR-0009)
-        _ => {}
+    let Some(command) = keys::command_for(key) else {
+        return Action::Continue;
+    };
+    match command {
+        Command::Quit => return Action::Quit,
+        Command::Next => viewer.next(),
+        Command::Prev => viewer.prev(),
+        Command::First => viewer.first(),
+        Command::Last => viewer.last(),
+        // ヘルプの開閉はイベントループが持つ。Viewer は棋譜の位置だけを持つ
+        Command::ToggleHelp | Command::CloseHelp => {}
     }
     Action::Continue
 }
@@ -182,8 +181,16 @@ pub fn run(mut viewer: Viewer) -> std::io::Result<()> {
 
 fn event_loop(terminal: &mut ratatui::DefaultTerminal, viewer: &mut Viewer) -> std::io::Result<()> {
     use ratatui::crossterm::event::{self, Event, KeyEventKind};
+
+    // ヘルプの開閉はここが持つ。Viewer に持たせると棋譜の位置以外の状態が増える
+    let mut help_open = false;
     loop {
-        terminal.draw(|frame| viewer.render(frame))?;
+        terminal.draw(|frame| {
+            viewer.render(frame);
+            if help_open {
+                help::render(frame);
+            }
+        })?;
         let Event::Key(key) = event::read()? else {
             continue;
         };
@@ -191,8 +198,14 @@ fn event_loop(terminal: &mut ratatui::DefaultTerminal, viewer: &mut Viewer) -> s
         if key.kind != KeyEventKind::Press {
             continue;
         }
-        if apply_key(viewer, key) == Action::Quit {
-            return Ok(());
+        match keys::command_for(key) {
+            Some(keys::Command::ToggleHelp) => help_open = !help_open,
+            Some(keys::Command::CloseHelp) => help_open = false,
+            _ => {
+                if apply_key(viewer, key) == Action::Quit {
+                    return Ok(());
+                }
+            }
         }
     }
 }
