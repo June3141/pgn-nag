@@ -23,6 +23,19 @@ fn missing_file_is_not_an_error() {
 }
 
 #[test]
+fn reading_does_not_create_anything() {
+    // ADR-0012 の Confirmation。nag は設定を読むだけで書かない
+    let dir = tempdir();
+    let path = dir.join("absent").join("config.toml");
+    assert!(config::load_from(&path).unwrap().is_none());
+    assert!(!path.exists(), "読み取りでファイルを作らないこと");
+    assert!(
+        !path.parent().unwrap().exists(),
+        "ディレクトリも作らないこと"
+    );
+}
+
+#[test]
 fn reads_all_fields() {
     let dir = tempdir();
     let path = write(

@@ -622,3 +622,118 @@ fn help_is_reachable_and_dismissable() {
         Some(Command::CloseHelp)
     );
 }
+
+#[test]
+fn picker_moves_and_selects() {
+    use pgn_nag::view::picker::{Picker, PickerAction};
+    let mut p = Picker::new(" games ", vec!["a".into(), "b".into(), "c".into()]);
+    assert_eq!(p.selected(), 0);
+
+    for code in [KeyCode::Down, KeyCode::Char('j')] {
+        p.apply(KeyEvent::new(code, KeyModifiers::NONE));
+    }
+    assert_eq!(p.selected(), 2);
+
+    p.apply(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
+    assert_eq!(p.selected(), 1);
+
+    assert_eq!(
+        p.apply(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        PickerAction::Choose(1)
+    );
+    assert_eq!(
+        p.apply(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE)),
+        PickerAction::Cancel
+    );
+}
+
+#[test]
+fn picker_stops_at_both_ends() {
+    use pgn_nag::view::picker::Picker;
+    let mut p = Picker::new(" games ", vec!["a".into(), "b".into()]);
+    p.apply(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+    assert_eq!(p.selected(), 0);
+    for _ in 0..5 {
+        p.apply(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+    }
+    assert_eq!(p.selected(), 1);
+}
+
+#[test]
+fn picker_jumps_to_both_ends() {
+    use pgn_nag::view::picker::Picker;
+    let mut p = Picker::new(" games ", vec!["a".into(), "b".into(), "c".into()]);
+    p.apply(KeyEvent::new(KeyCode::Char('G'), KeyModifiers::NONE));
+    assert_eq!(p.selected(), 2);
+    p.apply(KeyEvent::new(KeyCode::Char('g'), KeyModifiers::NONE));
+    assert_eq!(p.selected(), 0);
+}
+
+#[test]
+fn picker_cancels_on_escape() {
+    use pgn_nag::view::picker::{Picker, PickerAction};
+    let mut p = Picker::new(" games ", vec!["a".into()]);
+    assert_eq!(
+        p.apply(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+        PickerAction::Cancel
+    );
+}
+
+#[test]
+fn picker_keeps_the_selection_visible() {
+    // 端末に収まらない一覧で、選んでいる行が画面外に出ないこと
+    use pgn_nag::view::picker::Picker;
+    let items: Vec<String> = (0..50).map(|i| format!("game-{i:02}")).collect();
+    let mut p = Picker::new(" games ", items);
+    for _ in 0..49 {
+        p.apply(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+    }
+    let mut terminal = Terminal::new(TestBackend::new(WIDTH as u16, 12)).unwrap();
+    terminal.draw(|frame| p.render(frame)).unwrap();
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area.width as usize;
+    let screen: String = buffer
+        .content()
+        .chunks(width)
+        .map(|row| row.iter().map(|c| c.symbol()).collect::<String>())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(screen.contains("game-49"), "選択中の行が見えること");
+}
+
+#[test]
+fn picker_shows_the_legend() {
+    // 一覧画面はヘルプを持たないため、操作を画面内に書く
+    use pgn_nag::view::picker::Picker;
+    let p = Picker::new(" games ", vec!["a".into(), "b".into()]);
+    let mut terminal = Terminal::new(TestBackend::new(WIDTH as u16, 10)).unwrap();
+    terminal.draw(|frame| p.render(frame)).unwrap();
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area.width as usize;
+    let screen: String = buffer
+        .content()
+        .chunks(width)
+        .map(|row| row.iter().map(|c| c.symbol()).collect::<String>())
+        .collect::<Vec<_>>()
+        .join("\n")
+        .replace(' ', "");
+    assert!(screen.contains("Enter"), "決定のキーが出ること");
+}
+
+#[test]
+fn picker_shows_every_item() {
+    use pgn_nag::view::picker::Picker;
+    let p = Picker::new(" games ", vec!["alpha".into(), "beta".into()]);
+    let mut terminal = Terminal::new(TestBackend::new(WIDTH as u16, 10)).unwrap();
+    terminal.draw(|frame| p.render(frame)).unwrap();
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area.width as usize;
+    let screen: String = buffer
+        .content()
+        .chunks(width)
+        .map(|row| row.iter().map(|c| c.symbol()).collect::<String>())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(screen.contains("alpha"));
+    assert!(screen.contains("beta"));
+}
