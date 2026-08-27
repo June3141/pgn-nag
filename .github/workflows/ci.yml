@@ -37,7 +37,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo test --locked
 
-  # engine を要るテストはこのジョブだけに閉じる (ADR-0007)。
+  # engine を要するテストはこのジョブだけに閉じる (ADR-0007)。
   # 他のジョブに stockfish を入れると、engine 境界が崩れても CI が気付かなくなる。
   test-engine:
     runs-on: ubuntu-latest
@@ -51,4 +51,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - run: npx --yes markdownlint-cli@0.44.0 --config .markdownlint.yaml "**/*.md"
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          globs: "**/*.md"
