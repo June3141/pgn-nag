@@ -29,6 +29,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo clippy --locked --all-targets -- -D warnings
+      # clippy に file 単位の lint が無いため、ここだけ自前で見る (ADR-0010)
+      - name: source file の行数
+        run: |
+          over=$(find src -name '*.rs' -exec awk 'END{if(NR>300) print FILENAME": "NR" lines"}' {} \;)
+          [ -z "$over" ] || { echo "$over"; exit 1; }
 
   test:
     runs-on: ubuntu-latest
