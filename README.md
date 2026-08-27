@@ -36,4 +36,7 @@ nag view annotated.pgn
 
 ## ライセンス
 
-未定。
+GPL-3.0-or-later。
+
+盤面と PGN の処理に使っている `shakmaty` と `pgn-reader` が GPL-3.0-or-later のため、静的リンクした配布物は同じ条件で提供する。
+判断の経緯は [ADR-0013](docs/adr/0013-license-under-gpl-3.md) にある。

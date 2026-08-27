@@ -57,3 +57,4 @@ MADR に沿った構成で、`Considered Options` には却下した案も必ず
 | 0010 | [複雑度を CI でゲートする](0010-gate-complexity-in-ci.md) | accepted |
 | 0011 | [viewer を即時モードで描画する](0011-render-the-viewer-in-immediate-mode.md) | accepted |
 | 0012 | [保持する状態を設定だけに限る](0012-keep-state-in-config-only.md) | accepted |
+| 0013 | [GPL-3.0-or-later で配布する](0013-license-under-gpl-3.md) | accepted |
