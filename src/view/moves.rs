@@ -3,7 +3,7 @@
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
 
-use crate::model::{Eval, Ply, Score, move_marker};
+use crate::model::{Ply, move_marker};
 
 /// 評価値を欄に収めるのに要する桁数。`-327.68` と `#-100` が最長になる。
 const EVAL_WIDTH: usize = 7;
@@ -54,19 +54,9 @@ fn row(index: usize, ply: &Ply, with_eval: bool) -> String {
     }
     format!(
         "{head} {:>EVAL_WIDTH$}",
-        ply.eval.map(render_eval).unwrap_or_default()
+        // 注釈が無い手は空欄にする。0.00 と書くと互角と見分けられない
+        ply.eval.map(|e| e.score.render()).unwrap_or_default()
     )
-}
-
-/// 評価値を表示用の文字列にする。
-///
-/// 注釈が無い手は空欄にする。
-/// 0.00 と書くと、互角と注釈なしが見分けられない。
-fn render_eval(eval: Eval) -> String {
-    match eval.score {
-        Score::Cp(cp) => format!("{:+.2}", f64::from(cp) / 100.0),
-        Score::Mate(n) => format!("#{n}"),
-    }
 }
 
 #[cfg(test)]

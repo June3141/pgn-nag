@@ -406,6 +406,91 @@ fn leaves_the_status_quiet_without_an_eval() {
     );
 }
 
+/// 評価バーが立つ列。盤の右端と枠の内側にあたる。
+const BAR_COLUMN: usize = 21;
+
+/// 盤の右端に立つ評価バーを 1 本の文字列として返す。
+///
+/// 個数だけを数えると、上下を反転しても気付けない。
+/// 行末を詰めると、バーが空のときに駒を拾ってしまう。
+fn eval_bar(viewer: &Viewer) -> String {
+    draw(viewer)[1..9]
+        .iter()
+        .map(|l| l.chars().nth(BAR_COLUMN).unwrap_or(' '))
+        .collect()
+}
+
+#[test]
+fn eval_bar_fills_from_the_bottom() {
+    let mut v = viewer();
+    v.next(); // +0.32
+    assert_eq!(eval_bar(&v), "░░░░████", "白優勢は下から埋まること");
+}
+
+#[test]
+fn eval_bar_is_empty_without_an_eval() {
+    // 中立を描くと、互角と注釈なしが見分けられない
+    assert_eq!(eval_bar(&viewer()), "        ");
+}
+
+#[test]
+fn shows_check_and_mate_in_the_principal_variation() {
+    // 詰みの評価値の隣に、詰まない手順を並べない
+    let mut v = viewer();
+    for _ in 0..91 {
+        v.next();
+    }
+    let line = status(&draw(&v));
+    assert!(line.contains("Nf3#"), "詰みの記号が落ちないこと: {line}");
+
+    let mut checked = viewer();
+    for _ in 0..40 {
+        checked.next();
+    }
+    assert!(
+        status(&draw(&checked)).contains("Rxc8+"),
+        "王手の記号が落ちないこと"
+    );
+}
+
+#[test]
+fn numbers_the_principal_variation() {
+    // 番号が無いと、最善手順の先頭がどちらの手番か分からない
+    let mut v = viewer();
+    v.next();
+    let line = status(&draw(&v));
+    assert!(line.contains("1... Nf6"), "{line}");
+}
+
+#[test]
+fn puts_depth_before_the_variation() {
+    // 深さを可変長の手順の後ろに置くと、狭い端末で桁の途中から切れる
+    let mut v = viewer();
+    v.next();
+    let line = status(&draw(&v));
+    assert!(line.find("depth") < line.find("PV"), "{line}");
+}
+
+#[test]
+fn handles_evals_without_depth() {
+    // edge-cases には深さを持たない注釈と最善手順の無い手がある
+    let game = parse(include_str!("data/edge-cases.annotated.pgn"))
+        .unwrap()
+        .remove(0);
+    let mut v = Viewer::new(game);
+    v.next();
+    let line = status(&draw(&v));
+    assert!(line.contains("+0.34"), "{line}");
+    assert!(
+        !line.contains("depth"),
+        "深さが無いのに出さないこと: {line}"
+    );
+    assert!(
+        !line.contains("PV"),
+        "最善手順が無いのに出さないこと: {line}"
+    );
+}
+
 #[test]
 fn eval_bar_follows_the_advantage() {
     use pgn_nag::Score;
