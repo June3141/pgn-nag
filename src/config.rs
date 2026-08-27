@@ -26,17 +26,34 @@ pub struct Config {
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Thresholds {
+    // 1 つだけ緩めたい、という部分的な設定を書けるようにする。
+    // 3 つとも必須にすると、1 行変えるために全部を書き写すことになる
+    #[serde(default = "default_inaccuracy")]
     pub inaccuracy: i32,
+    #[serde(default = "default_mistake")]
     pub mistake: i32,
+    #[serde(default = "default_blunder")]
     pub blunder: i32,
+}
+
+const fn default_inaccuracy() -> i32 {
+    50
+}
+
+const fn default_mistake() -> i32 {
+    100
+}
+
+const fn default_blunder() -> i32 {
+    200
 }
 
 impl Default for Thresholds {
     fn default() -> Self {
         Self {
-            inaccuracy: 50,
-            mistake: 100,
-            blunder: 200,
+            inaccuracy: default_inaccuracy(),
+            mistake: default_mistake(),
+            blunder: default_blunder(),
         }
     }
 }
