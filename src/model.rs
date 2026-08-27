@@ -46,3 +46,40 @@ pub struct Game {
     /// 終局結果の表記。`1-0` `0-1` `1/2-1/2` `*` のいずれか。
     pub outcome: String,
 }
+
+impl Ply {
+    /// 注釈を持つか。
+    pub fn has_comment(&self) -> bool {
+        self.eval.is_some() || !self.pv.is_empty()
+    }
+
+    /// `{ [%eval ...] [%pv ...] }` の形に組み立てる。注釈が無ければ None。
+    pub fn comment(&self) -> Option<String> {
+        if !self.has_comment() {
+            return None;
+        }
+        let mut parts = Vec::new();
+        if let Some(eval) = self.eval {
+            parts.push(format!("[%eval {}]", eval.render()));
+        }
+        if !self.pv.is_empty() {
+            parts.push(format!("[%pv {}]", self.pv.join(" ")));
+        }
+        Some(format!("{{ {} }}", parts.join(" ")))
+    }
+}
+
+impl Eval {
+    /// `0.32,18` や `#-1,18` の形に戻す。
+    pub fn render(&self) -> String {
+        let value = match self.score {
+            // centipawn は小数 2 桁のポーン単位で書く
+            Score::Cp(cp) => format!("{:.2}", f64::from(cp) / 100.0),
+            Score::Mate(n) => format!("#{n}"),
+        };
+        match self.depth {
+            Some(d) => format!("{value},{d}"),
+            None => value,
+        }
+    }
+}
