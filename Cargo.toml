@@ -7,7 +7,8 @@ edition = "2024"
 # 上げるときに併せて上げること。下回ると解決できない依存が入り込む
 rust-version = "1.98"
 description = "PGN を UCI エンジンで一括解析し、注釈付き PGN として読み返すツール"
-# ライセンス未定のうちは publish させない (crates.io へ誤って公開しないための歯止め)
+license = "GPL-3.0-or-later"
+# 公開の是非がまだ決まっていない (#6)。決まるまで crates.io へ出さない
 publish = false
 
 [lib]
