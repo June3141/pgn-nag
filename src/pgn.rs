@@ -8,7 +8,7 @@ use std::ops::ControlFlow;
 use pgn_reader::{Outcome, RawComment, RawTag, Reader, SanPlus, Visitor};
 use shakmaty::{Chess, Position};
 
-use crate::model::{Eval, Game, Ply, Score};
+use crate::model::{Eval, Game, Ply, Score, move_marker};
 
 /// 読み込みに失敗した理由。
 #[derive(Debug, PartialEq, Eq)]
@@ -224,12 +224,11 @@ fn escape_tag(value: &str) -> String {
 fn movetext(game: &Game) -> String {
     let mut out = String::new();
     for (i, ply) in game.plies.iter().enumerate() {
-        let number = i / 2 + 1;
-        if i % 2 == 0 {
-            out.push_str(&format!("{number}. "));
+        if i.is_multiple_of(2) {
+            out.push_str(&format!("{} ", move_marker(i)));
         } else if i == 0 || game.plies[i - 1].comment.is_some() {
             // 黒の手は、直前に注釈が入って手番が離れたときだけ番号を繰り返す
-            out.push_str(&format!("{number}... "));
+            out.push_str(&format!("{} ", move_marker(i)));
         }
         out.push_str(&ply.san);
         out.push(' ');
