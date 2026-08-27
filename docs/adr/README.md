@@ -55,3 +55,4 @@ MADR に沿った構成で、`Considered Options` には却下した案も必ず
 | 0008 | [評価値の出所を記録する](0008-record-the-source-of-evaluations.md) | accepted |
 | 0009 | [キーバインドを端末ツールの慣行に揃える](0009-follow-terminal-key-binding-conventions.md) | accepted |
 | 0010 | [複雑度を CI でゲートする](0010-gate-complexity-in-ci.md) | accepted |
+| 0011 | [viewer を即時モードで描画する](0011-render-the-viewer-in-immediate-mode.md) | accepted |
