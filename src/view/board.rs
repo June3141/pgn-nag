@@ -1,4 +1,4 @@
-//! 盤面の描画。
+//! 盤面と評価バーの描画。
 
 use ratatui::text::{Line, Span};
 use shakmaty::{Board, Color, File, Rank, Role, Square};
@@ -6,9 +6,9 @@ use shakmaty::{Board, Color, File, Rank, Role, Square};
 /// 盤面を白側から見た 8 行として組み立てる。
 ///
 /// 空きマスは `.` にする。空白にすると列が数えにくく、盤の枠との対応も取れない。
-pub fn lines(board: &Board) -> Vec<Line<'static>> {
+pub fn lines(board: &Board, bar: &[char]) -> Vec<Line<'static>> {
     let mut out = Vec::with_capacity(9);
-    for rank in Rank::ALL.into_iter().rev() {
+    for (row, rank) in Rank::ALL.into_iter().rev().enumerate() {
         let mut spans = vec![Span::raw(format!("{}  ", rank.char()))];
         for file in File::ALL {
             spans.push(Span::raw(format!(
@@ -16,6 +16,11 @@ pub fn lines(board: &Board) -> Vec<Line<'static>> {
                 glyph(board, Square::from_coords(file, rank))
             )));
         }
+        // 評価バーは盤の右に縦置きにする
+        spans.push(Span::raw(format!(
+            " {}",
+            bar.get(row).copied().unwrap_or(' ')
+        )));
         out.push(Line::from(spans));
     }
     out.push(Line::from("   a b c d e f g h"));

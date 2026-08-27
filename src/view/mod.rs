@@ -4,7 +4,9 @@
 //! widget が状態を持たないため、手の移動は添字の操作だけで完結する。
 
 mod board;
+mod evalbar;
 mod moves;
+mod status;
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
@@ -26,6 +28,18 @@ pub struct Viewer {
 impl Viewer {
     pub fn new(game: Game) -> Self {
         Self { game, cursor: 0 }
+    }
+
+    /// 表示している局面に至った手。開始局面では None になる。
+    fn current_ply(&self) -> Option<&crate::model::Ply> {
+        self.cursor
+            .checked_sub(1)
+            .and_then(|i| self.game.plies.get(i))
+    }
+
+    /// 表示している局面の評価。
+    fn eval(&self) -> Option<crate::model::Eval> {
+        self.current_ply().and_then(|p| p.eval)
     }
 
     /// 表示する局面。
@@ -78,14 +92,21 @@ impl Viewer {
 
     /// 現在の状態を描く。
     pub fn render(&self, frame: &mut Frame) {
+        // 状態行は 1 行 + 枠で 3 行を占める
+        let [top, bottom] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(3)]).areas(frame.area());
+
         // 盤は段番号込みで固定幅。残りを手順リストに渡す。
         // 右を Min にすると solver がそちらを優先し、狭い端末で盤のほうが削られる
         let [left, right] =
-            Layout::horizontal([Constraint::Length(24), Constraint::Fill(1)]).areas(frame.area());
+            Layout::horizontal([Constraint::Length(24), Constraint::Fill(1)]).areas(top);
 
         let position = self.position();
-        let board = Paragraph::new(board::lines(position.board()))
-            .block(Block::bordered().title(self.players()));
+        let board = Paragraph::new(board::lines(
+            position.board(),
+            &evalbar::column(self.eval()),
+        ))
+        .block(Block::bordered().title(self.players()));
         frame.render_widget(board, left);
 
         let inner_height = right.height.saturating_sub(2) as usize;
@@ -98,6 +119,9 @@ impl Viewer {
         ))
         .block(Block::bordered().title(self.progress()));
         frame.render_widget(list, right);
+
+        let line = Paragraph::new(status::line(self.current_ply())).block(Block::bordered());
+        frame.render_widget(line, bottom);
     }
 }
 

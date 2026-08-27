@@ -36,6 +36,13 @@ fn draw(viewer: &Viewer) -> Vec<String> {
         .collect()
 }
 
+/// 盤の行から評価バーを落とす。駒の並びだけを見たいとき使う。
+fn squares(rows: &[String]) -> Vec<String> {
+    rows.iter()
+        .map(|l| l.trim_end_matches(['█', '░', ' ']).to_owned())
+        .collect()
+}
+
 /// 指定した列の範囲を行ごとに取り出す。枠と余白は落とす。
 ///
 /// 隣り合う枠線で空の区切りができるため、`│` での分割では領域を取り出せない。
@@ -59,6 +66,8 @@ fn pane(screen: &[String], cols: std::ops::Range<usize>) -> Vec<String> {
 const WIDTH: usize = 64;
 /// 盤面の領域。src/view/mod.rs の Layout と揃える
 const BOARD: std::ops::Range<usize> = 0..24;
+/// 状態行が占める行数。枠を含む
+const STATUS_ROWS: usize = 3;
 /// 手順リストの領域。盤の右端から画面の右端まで
 const MOVES: std::ops::Range<usize> = BOARD.end..WIDTH;
 
@@ -70,7 +79,7 @@ fn press(viewer: &mut Viewer, code: KeyCode) -> Action {
 fn draws_the_board_from_whites_side() {
     // 段の番号と駒の並びを行ごと突き合わせる。
     // 部分一致で見ると盤を上下逆にしても通ってしまう
-    let screen = pane(&draw(&viewer()), BOARD);
+    let screen = squares(&pane(&draw(&viewer()), BOARD));
     let board: Vec<&str> = screen[1..10].iter().map(String::as_str).collect();
     assert_eq!(
         board,
@@ -92,7 +101,7 @@ fn draws_the_board_from_whites_side() {
 fn advancing_moves_a_single_pawn() {
     let mut v = viewer();
     v.next(); // 1. d4
-    let screen = pane(&draw(&v), BOARD);
+    let screen = squares(&pane(&draw(&v), BOARD));
     assert_eq!(screen[5], "4  . . . P . . . .");
     assert_eq!(screen[7], "2  P P P . P P P P");
 }
@@ -309,7 +318,8 @@ fn keeps_the_last_ply_at_the_bottom() {
     let mut v = viewer();
     v.last();
     let screen = pane(&draw(&v), MOVES);
-    let rows = &screen[1..13];
+    // 手順リストは状態行のぶんだけ縮む
+    let rows = &screen[1..screen.len() - STATUS_ROWS - 1];
     assert!(
         rows.iter().all(|l| !l.is_empty()),
         "末尾で詰めないと下半分が空欄になる: {screen:?}"
@@ -398,23 +408,37 @@ fn leaves_the_status_quiet_without_an_eval() {
 
 #[test]
 fn eval_bar_follows_the_advantage() {
-    // 白が有利なほど下から埋まる
-    let mut white = viewer();
-    white.next();
-    let mut black = viewer();
-    for _ in 0..46 {
-        black.next();
-    }
-    let filled = |v: &Viewer| {
-        pane(&draw(v), BOARD)
+    use pgn_nag::Score;
+
+    let game = parse(SAMPLE).unwrap().remove(0);
+    let cp = |i: usize| match game.plies[i].eval.map(|e| e.score) {
+        Some(Score::Cp(cp)) => Some(cp),
+        _ => None,
+    };
+    let best = (0..game.plies.len())
+        .filter(|&i| cp(i).is_some())
+        .max_by_key(|&i| cp(i).unwrap())
+        .unwrap();
+    let worst = (0..game.plies.len())
+        .filter(|&i| cp(i).is_some())
+        .min_by_key(|&i| cp(i).unwrap())
+        .unwrap();
+
+    let filled = |cursor: usize| {
+        let mut v = viewer();
+        for _ in 0..cursor {
+            v.next();
+        }
+        pane(&draw(&v), BOARD)
             .iter()
             .map(|l| l.matches('█').count())
             .sum::<usize>()
     };
-    assert!(filled(&white) > 0, "評価バーが出ること");
-    assert_ne!(
-        filled(&white),
-        filled(&black),
-        "優劣が変われば埋まり方も変わること"
+    let white = filled(best + 1);
+    let black = filled(worst + 1);
+    assert!(
+        white > black,
+        "白優勢のほうが多く埋まること: {white} vs {black}"
     );
+    assert_eq!(filled(0), 0, "注釈が無い開始局面では出さないこと");
 }
