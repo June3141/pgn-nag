@@ -40,7 +40,7 @@ fn scroll_offset(cursor: usize, total: usize, height: usize) -> usize {
 /// `1.  d4    +0.32` の形に整える。
 fn row(index: usize, ply: &Ply) -> String {
     let number = index / 2 + 1;
-    let marker = if index % 2 == 0 {
+    let marker = if index.is_multiple_of(2) {
         format!("{number}.")
     } else {
         format!("{number}...")
