@@ -35,6 +35,13 @@ pub struct Ply {
     pub eval: Option<Eval>,
     /// 最善手順。UCI 表記のまま保持する。
     pub pv: Vec<String>,
+    /// 注釈の生のテキスト。波括弧は含まない。
+    ///
+    /// 書き出しはこれをそのまま出す。
+    /// `eval` と `pv` はここから導出した値なので、書き換えるときは
+    /// 両方を揃えないと、保持している値と出力が食い違う。
+    /// 解釈しない `[%clk]` 等を落とさないために生のまま持つ。
+    pub comment: Option<String>,
 }
 
 /// 1 対局。
@@ -45,41 +52,4 @@ pub struct Game {
     pub plies: Vec<Ply>,
     /// 終局結果の表記。`1-0` `0-1` `1/2-1/2` `*` のいずれか。
     pub outcome: String,
-}
-
-impl Ply {
-    /// 注釈を持つか。
-    pub fn has_comment(&self) -> bool {
-        self.eval.is_some() || !self.pv.is_empty()
-    }
-
-    /// `{ [%eval ...] [%pv ...] }` の形に組み立てる。注釈が無ければ None。
-    pub fn comment(&self) -> Option<String> {
-        if !self.has_comment() {
-            return None;
-        }
-        let mut parts = Vec::new();
-        if let Some(eval) = self.eval {
-            parts.push(format!("[%eval {}]", eval.render()));
-        }
-        if !self.pv.is_empty() {
-            parts.push(format!("[%pv {}]", self.pv.join(" ")));
-        }
-        Some(format!("{{ {} }}", parts.join(" ")))
-    }
-}
-
-impl Eval {
-    /// `0.32,18` や `#-1,18` の形に戻す。
-    pub fn render(&self) -> String {
-        let value = match self.score {
-            // centipawn は小数 2 桁のポーン単位で書く
-            Score::Cp(cp) => format!("{:.2}", f64::from(cp) / 100.0),
-            Score::Mate(n) => format!("#{n}"),
-        };
-        match self.depth {
-            Some(d) => format!("{value},{d}"),
-            None => value,
-        }
-    }
 }

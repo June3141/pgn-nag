@@ -100,6 +100,7 @@ impl Visitor for GameVisitor {
                     position: b.position.clone(),
                     eval: None,
                     pv: Vec::new(),
+                    comment: None,
                 });
             }
             Err(_) => {
@@ -125,6 +126,7 @@ impl Visitor for GameVisitor {
         let Some(ply) = b.plies.last_mut() else {
             return ControlFlow::Continue(());
         };
+        ply.comment = Some(text.clone());
         match apply_comment(ply, &text) {
             Ok(()) => ControlFlow::Continue(()),
             Err(e) => {
@@ -225,15 +227,16 @@ fn movetext(game: &Game) -> String {
         let number = i / 2 + 1;
         if i % 2 == 0 {
             out.push_str(&format!("{number}. "));
-        } else if i == 0 || game.plies[i - 1].has_comment() {
+        } else if i == 0 || game.plies[i - 1].comment.is_some() {
             // 黒の手は、直前に注釈が入って手番が離れたときだけ番号を繰り返す
             out.push_str(&format!("{number}... "));
         }
         out.push_str(&ply.san);
         out.push(' ');
-        if let Some(comment) = ply.comment() {
-            out.push_str(&comment);
-            out.push(' ');
+        if let Some(comment) = &ply.comment {
+            out.push('{');
+            out.push_str(comment);
+            out.push_str("} ");
         }
     }
     out.push_str(&game.outcome);
