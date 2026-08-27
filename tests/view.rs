@@ -358,3 +358,63 @@ fn does_not_truncate_the_eval() {
         );
     }
 }
+
+/// 最下段の状態行。
+fn status(screen: &[String]) -> String {
+    screen[screen.len() - 2].trim_matches('│').trim().to_owned()
+}
+
+#[test]
+fn shows_the_current_eval_and_depth() {
+    let mut v = viewer();
+    v.next(); // 1. d4 { [%eval 0.32,18] }
+    let line = status(&draw(&v));
+    assert!(line.contains("+0.32"), "評価値が出ること: {line}");
+    assert!(line.contains("18"), "深さが出ること: {line}");
+}
+
+#[test]
+fn shows_the_principal_variation_in_san() {
+    // 保持しているのは UCI 表記だが、読むのは SAN
+    let mut v = viewer();
+    v.next(); // [%pv g8f6 c2c4 e7e6 g1f3 d7d5 c1g5]
+    let line = status(&draw(&v));
+    assert!(line.contains("Nf6"), "UCI ではなく SAN で出ること: {line}");
+    assert!(
+        !line.contains("g8f6"),
+        "UCI がそのまま出ていないこと: {line}"
+    );
+}
+
+#[test]
+fn leaves_the_status_quiet_without_an_eval() {
+    // 開始局面には注釈が無い
+    let line = status(&draw(&viewer()));
+    assert!(
+        !line.contains("+0.00"),
+        "注釈が無いのに評価値を出さないこと: {line}"
+    );
+}
+
+#[test]
+fn eval_bar_follows_the_advantage() {
+    // 白が有利なほど下から埋まる
+    let mut white = viewer();
+    white.next();
+    let mut black = viewer();
+    for _ in 0..46 {
+        black.next();
+    }
+    let filled = |v: &Viewer| {
+        pane(&draw(v), BOARD)
+            .iter()
+            .map(|l| l.matches('█').count())
+            .sum::<usize>()
+    };
+    assert!(filled(&white) > 0, "評価バーが出ること");
+    assert_ne!(
+        filled(&white),
+        filled(&black),
+        "優劣が変われば埋まり方も変わること"
+    );
+}
