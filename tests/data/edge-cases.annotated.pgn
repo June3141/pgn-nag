@@ -1,0 +1,21 @@
+[Event "Rated Blitz game"]
+[Site "https://lichess.org/edgecase1"]
+[Date "2026.04.01"]
+[Round "-"]
+[White "Player C"]
+[Black "Player D"]
+[Result "1-0"]
+[Annotator "Stockfish 16"]
+
+1. e4 { [%eval 0.34] [%clk 0:03:00] } 1... e5 { [%eval 0.28,20] [%clk 0:03:00] } 2. Bc4 { [%eval 0.20] } 2... Nc6 { [%eval 0.31] } 3. Qh5 { [%eval 0.00] [%clk 0:02:55] } 3... Nf6 { [%eval #3] } (3... g6 { [%eval 0.10] } 4. Qf3 { [%eval 0.05] }) 4. Qxf7# 1-0
+
+[Event "Rated Blitz game"]
+[Site "https://lichess.org/edgecase2"]
+[Date "2026.04.01"]
+[Round "-"]
+[White "Player E"]
+[Black "Player F"]
+[Result "1/2-1/2"]
+
+1. d4 { [%eval 0.29,18] } 1... d5 { [%eval 0.31,18] } 2. Nf3 { [%eval 0.24,18] } 2... Nf6 1/2-1/2
+
