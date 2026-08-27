@@ -26,4 +26,5 @@ too_many_lines = "deny"
 
 [dependencies]
 pgn-reader = "0.29"
+ratatui = "0.30"
 shakmaty = "0.30"
