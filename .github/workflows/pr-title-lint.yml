@@ -1,0 +1,27 @@
+name: PR Title Lint
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-title-lint-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-title:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # dependabot のタイトルは conventional commits 形式で scope を括弧で持つため、
+    # この規約とは別物になる。生成元を変えられないので対象外にする
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: python3 .github/scripts/pr-title-lint.py --selftest
+      - env:
+          # タイトルを直接展開すると shell injection になる
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: python3 .github/scripts/pr-title-lint.py "$PR_TITLE"

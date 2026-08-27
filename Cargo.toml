@@ -13,3 +13,9 @@ publish = false
 [[bin]]
 name = "nag"
 path = "src/main.rs"
+
+# 閾値は clippy.toml にある。どちらも既定では無効な lint なので、ここで
+# 有効にしないとゲートが効かない (ADR-0010)
+[lints.clippy]
+cognitive_complexity = "deny"
+too_many_lines = "deny"

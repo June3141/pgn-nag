@@ -1,0 +1,5 @@
+# 実装前に厳しめで始める。窮屈さが実際に出てから緩める。
+# 既定値はいずれもこれより緩い (25 / 100 / 7)
+cognitive-complexity-threshold = 15
+too-many-lines-threshold = 50
+too-many-arguments-threshold = 5
